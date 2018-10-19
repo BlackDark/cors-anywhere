@@ -167,6 +167,11 @@ docker build -t cors-anywhere .
 docker run -d -p 8080:8080 --name cors-anywhere -e CORSANYWHERE_WHITELIST=https://example.com,http://example.com,http://example.com:8080 cors-anywhere
 ```
 
+Environment variables:
+
+- NODE_TLS_REJECT_UNAUTHORIZED
+- CORSANYWHERE_WILDCARDORIGIN
+
 
 ## License
 

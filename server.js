@@ -9,6 +9,7 @@ var port = process.env.PORT || 8080;
 // use originWhitelist instead.
 var originBlacklist = parseEnvList(process.env.CORSANYWHERE_BLACKLIST);
 var originWhitelist = parseEnvList(process.env.CORSANYWHERE_WHITELIST);
+
 function parseEnvList(env) {
   if (!env) {
     return [];
@@ -16,11 +17,18 @@ function parseEnvList(env) {
   return env.split(',');
 }
 
+var wildCardOrigin = process.env.CORSANYWHERE_WILDCARDORIGIN ?
+  process.env.CORSANYWHERE_WILDCARDORIGIN.toLowerCase() === 'true' : true;
+
+var syswidecas = require('syswide-cas');
+syswidecas.addCAs('/custom/ssl/ca');
+
 // Set up rate-limiting to avoid abuse of the public CORS Anywhere server.
 var checkRateLimit = require('./lib/rate-limit')(process.env.CORSANYWHERE_RATELIMIT);
 
 var cors_proxy = require('./lib/cors-anywhere');
-cors_proxy.createServer({
+
+var serverConfig = {
   originBlacklist: originBlacklist,
   originWhitelist: originWhitelist,
   requireHeader: ['origin', 'x-requested-with'],
@@ -39,6 +47,12 @@ cors_proxy.createServer({
     // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
     xfwd: false,
   },
-}).listen(port, host, function() {
+  wildcardOrigin: wildCardOrigin,
+};
+
+console.log('Env: ', process.env);
+console.log('Server configuration: ', serverConfig);
+
+cors_proxy.createServer(serverConfig).listen(port, host, function () {
   console.log('Running CORS Anywhere on ' + host + ':' + port);
 });
