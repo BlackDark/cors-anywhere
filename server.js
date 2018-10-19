@@ -1,45 +1,48 @@
 require('dotenv').config();
 
-var syswidecas = require('syswide-cas');
+const syswidecas = require('syswide-cas');
 syswidecas.addCAs(parseEnvArray(process.env.CORSANYWHERE_CUSTOMCAFOLDERS));
 syswidecas.addCAs(parseEnvArray(process.env.CORSANYWHERE_CUSTOMCAFILESS));
 
 // Listen on a specific host via the HOST environment variable
-var host = process.env.HOST || '0.0.0.0';
+const host = process.env.HOST || '0.0.0.0';
 // Listen on a specific port via the PORT environment variable
-var port = process.env.PORT || 8080;
+const port = process.env.PORT || 8080;
 
 // Grab the blacklist from the command-line so that we can update the blacklist without deploying
 // again. CORS Anywhere is open by design, and this blacklist is not used, except for countering
 // immediate abuse (e.g. denial of service). If you want to block all origins except for some,
 // use originWhitelist instead.
-var originBlacklist = parseEnvList(process.env.CORSANYWHERE_BLACKLIST);
-var originWhitelist = parseEnvList(process.env.CORSANYWHERE_WHITELIST);
+const originBlacklist = parseEnvList(process.env.CORSANYWHERE_BLACKLIST);
+const originWhitelist = parseEnvList(process.env.CORSANYWHERE_WHITELIST);
 
-var wildCardOrigin = process.env.CORSANYWHERE_WILDCARDORIGIN ? process.env.CORSANYWHERE_WILDCARDORIGIN.toLowerCase() === 'true' : true;
-var allowCredentials = process.env.CORSANYWHERE_ALLOWCREDENTIALS ? process.env.CORSANYWHERE_ALLOWCREDENTIALS.toLowerCase() === 'true' : true;
+const wildCardOrigin = process.env.CORSANYWHERE_WILDCARDORIGIN ? process.env.CORSANYWHERE_WILDCARDORIGIN.toLowerCase() === 'true' : true;
+const allowCredentials = process.env.CORSANYWHERE_ALLOWCREDENTIALS ? process.env.CORSANYWHERE_ALLOWCREDENTIALS.toLowerCase() === 'true' : false;
+const httpsOptionXfwd = process.env.CORSANYWHERE_HTTPSOPTIONS_XFWD ? process.env.CORSANYWHERE_HTTPSOPTIONS_XFWD.toLowerCase() === 'true' : false;
+const handleRedirects = process.env.CORSANYWHERE_HANDLE_REDIRECTS ? process.env.CORSANYWHERE_HANDLE_REDIRECTS.toLowerCase() === 'true' : true;
 
-var allowedMethods = process.env.CORSANYWHERE_ALLOWEDMETHODS ? parseEnvArray(process.env.CORSANYWHERE_ALLOWEDMETHODS) : [];
-var requireHeader = process.env.CORSANYWHERE_REQUIREHEADER ? parseEnvArray(process.env.CORSANYWHERE_REQUIREHEADER) : [];
-var removeHeaders = process.env.CORSANYWHERE_REMOVEHEADER ? parseEnvArray(process.env.CORSANYWHERE_REMOVEHEADER) : [];
-var redirectSameOrigin = process.env.CORSANYWHERE_REDIRECTSAMEORIGIN ? process.env.CORSANYWHERE_REDIRECTSAMEORIGIN.toLowerCase() === 'true' : true;
-var maxRedirects = process.env.CORSANYWHERE_MAXREDIRECTS ? +process.env.CORSANYWHERE_MAXREDIRECTS : 5;
+const allowedMethods = process.env.CORSANYWHERE_ALLOWEDMETHODS ? parseEnvArray(process.env.CORSANYWHERE_ALLOWEDMETHODS) : [];
+const requireHeader = process.env.CORSANYWHERE_REQUIREHEADER ? parseEnvArray(process.env.CORSANYWHERE_REQUIREHEADER) : [];
+const removeHeaders = process.env.CORSANYWHERE_REMOVEHEADER ? parseEnvArray(process.env.CORSANYWHERE_REMOVEHEADER) : [];
+const redirectSameOrigin = process.env.CORSANYWHERE_REDIRECTSAMEORIGIN ? process.env.CORSANYWHERE_REDIRECTSAMEORIGIN.toLowerCase() === 'true' : true;
+const maxRedirects = process.env.CORSANYWHERE_MAXREDIRECTS ? +process.env.CORSANYWHERE_MAXREDIRECTS : 5;
 
-var setRequestHeaders = process.env.CORSANYWHERE_SETREQUESTHEADER ? parseEnvObject(process.env.CORSANYWHERE_SETREQUESTHEADER) : {};
-var setResponseHeaders = process.env.CORSANYWHERE_SETRESPONSEHEADER ? parseEnvObject(process.env.CORSANYWHERE_SETRESPONSEHEADER) : {};
+const setRequestHeaders = process.env.CORSANYWHERE_SETREQUESTHEADER ? parseEnvObject(process.env.CORSANYWHERE_SETREQUESTHEADER) : {};
+const setResponseHeaders = process.env.CORSANYWHERE_SETRESPONSEHEADER ? parseEnvObject(process.env.CORSANYWHERE_SETRESPONSEHEADER) : {};
 
 if (allowCredentials) {
   setResponseHeaders['Access-Control-Allow-Credentials'] = true;
 }
 
 // Set up rate-limiting to avoid abuse of the public CORS Anywhere server.
-var checkRateLimit = require('./lib/rate-limit')(process.env.CORSANYWHERE_RATELIMIT);
+const checkRateLimit = require('./lib/rate-limit')(process.env.CORSANYWHERE_RATELIMIT);
 
-var cors_proxy = require('./lib/cors-anywhere');
+const cors_proxy = require('./lib/cors-anywhere');
 
-var serverConfig = {
+const serverConfig = {
   allowedMethods: allowedMethods,
   // getProxyForUrl: getProxyForUrl, // Check code if possible to modify
+  handleRedirects: handleRedirects,
   maxRedirects: maxRedirects,
   originBlacklist: originBlacklist,
   originWhitelist: originWhitelist,
@@ -49,7 +52,7 @@ var serverConfig = {
   redirectSameOrigin: redirectSameOrigin,
   httpProxyOptions: {
     // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
-    xfwd: false,
+    xfwd: httpsOptionXfwd,
   },
   setHeaders: setRequestHeaders,
   setResponseHeaders: setResponseHeaders,
