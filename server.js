@@ -23,9 +23,11 @@ const handleRedirects = process.env.CORSANYWHERE_HANDLE_REDIRECTS ? process.env.
 
 const allowedMethods = process.env.CORSANYWHERE_ALLOWEDMETHODS ? parseEnvArray(process.env.CORSANYWHERE_ALLOWEDMETHODS) : [];
 const requireHeader = process.env.CORSANYWHERE_REQUIREHEADER ? parseEnvArray(process.env.CORSANYWHERE_REQUIREHEADER) : [];
-const removeHeaders = process.env.CORSANYWHERE_REMOVEHEADER ? parseEnvArray(process.env.CORSANYWHERE_REMOVEHEADER) : [];
+const removeHeaders = process.env.CORSANYWHERE_REMOVEREQUESTHEADERS ? parseEnvArray(process.env.CORSANYWHERE_REMOVEREQUESTHEADERS) : [];
+const removeReponseHeaders = process.env.CORSANYWHERE_REMOVERESPONSEHEADERS ? parseEnvArray(process.env.CORSANYWHERE_REMOVERESPONSEHEADERS) : [];
 const redirectSameOrigin = process.env.CORSANYWHERE_REDIRECTSAMEORIGIN ? process.env.CORSANYWHERE_REDIRECTSAMEORIGIN.toLowerCase() === 'true' : true;
 const maxRedirects = process.env.CORSANYWHERE_MAXREDIRECTS ? +process.env.CORSANYWHERE_MAXREDIRECTS : 5;
+const disableTLSVerification = process.env.NODE_TLS_REJECT_UNAUTHORIZED ? +process.env.NODE_TLS_REJECT_UNAUTHORIZED === 0 : false;
 
 const setRequestHeaders = process.env.CORSANYWHERE_SETREQUESTHEADER ? parseEnvObject(process.env.CORSANYWHERE_SETREQUESTHEADER) : {};
 const setResponseHeaders = process.env.CORSANYWHERE_SETRESPONSEHEADER ? parseEnvObject(process.env.CORSANYWHERE_SETRESPONSEHEADER) : {};
@@ -49,10 +51,11 @@ const serverConfig = {
   requireHeader: requireHeader,
   checkRateLimit: checkRateLimit,
   removeHeaders: removeHeaders,
+  removeReponseHeaders: removeReponseHeaders,
   redirectSameOrigin: redirectSameOrigin,
   httpProxyOptions: {
-    // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
-    xfwd: httpsOptionXfwd,
+    xfwd: httpsOptionXfwd, // Append X-Forwarded-* headers // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
+    secure: !disableTLSVerification,
   },
   setHeaders: setRequestHeaders,
   setResponseHeaders: setResponseHeaders,

@@ -2,6 +2,7 @@
 *.tmp
 *.log
 *.lock
+package-lock.json
 
 .idea/
 coverage/
