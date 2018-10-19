@@ -2,7 +2,10 @@
 *.tmp
 *.log
 *.lock
+.gitignore
+.dockerignore
 
 .idea/
 coverage/
 node_modules/
+test/
