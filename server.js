@@ -17,10 +17,20 @@ var originBlacklist = parseEnvList(process.env.CORSANYWHERE_BLACKLIST);
 var originWhitelist = parseEnvList(process.env.CORSANYWHERE_WHITELIST);
 
 var wildCardOrigin = process.env.CORSANYWHERE_WILDCARDORIGIN ? process.env.CORSANYWHERE_WILDCARDORIGIN.toLowerCase() === 'true' : true;
+var allowCredentials = process.env.CORSANYWHERE_ALLOWCREDENTIALS ? process.env.CORSANYWHERE_ALLOWCREDENTIALS.toLowerCase() === 'true' : true;
 
+var allowedMethods = process.env.CORSANYWHERE_ALLOWEDMETHODS ? parseEnvArray(process.env.CORSANYWHERE_ALLOWEDMETHODS) : [];
 var requireHeader = process.env.CORSANYWHERE_REQUIREHEADER ? parseEnvArray(process.env.CORSANYWHERE_REQUIREHEADER) : [];
 var removeHeaders = process.env.CORSANYWHERE_REMOVEHEADER ? parseEnvArray(process.env.CORSANYWHERE_REMOVEHEADER) : [];
 var redirectSameOrigin = process.env.CORSANYWHERE_REDIRECTSAMEORIGIN ? process.env.CORSANYWHERE_REDIRECTSAMEORIGIN.toLowerCase() === 'true' : true;
+var maxRedirects = process.env.CORSANYWHERE_MAXREDIRECTS ? +process.env.CORSANYWHERE_MAXREDIRECTS : 5;
+
+var setRequestHeaders = process.env.CORSANYWHERE_SETREQUESTHEADER ? parseEnvObject(process.env.CORSANYWHERE_SETREQUESTHEADER) : {};
+var setResponseHeaders = process.env.CORSANYWHERE_SETRESPONSEHEADER ? parseEnvObject(process.env.CORSANYWHERE_SETRESPONSEHEADER) : {};
+
+if (allowCredentials) {
+  setResponseHeaders['Access-Control-Allow-Credentials'] = true;
+}
 
 // Set up rate-limiting to avoid abuse of the public CORS Anywhere server.
 var checkRateLimit = require('./lib/rate-limit')(process.env.CORSANYWHERE_RATELIMIT);
@@ -28,6 +38,9 @@ var checkRateLimit = require('./lib/rate-limit')(process.env.CORSANYWHERE_RATELI
 var cors_proxy = require('./lib/cors-anywhere');
 
 var serverConfig = {
+  allowedMethods: allowedMethods,
+  // getProxyForUrl: getProxyForUrl, // Check code if possible to modify
+  maxRedirects: maxRedirects,
   originBlacklist: originBlacklist,
   originWhitelist: originWhitelist,
   requireHeader: requireHeader,
@@ -38,6 +51,8 @@ var serverConfig = {
     // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
     xfwd: false,
   },
+  setHeaders: setRequestHeaders,
+  setResponseHeaders: setResponseHeaders,
   wildcardOrigin: wildCardOrigin,
 };
 
@@ -59,6 +74,13 @@ function parseEnvList(env) {
 function parseEnvArray(env) {
   if (!env) {
     return [];
+  }
+  return JSON.parse(env);
+}
+
+function parseEnvObject(env) {
+  if (!env) {
+    return {};
   }
   return JSON.parse(env);
 }
