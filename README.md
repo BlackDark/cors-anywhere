@@ -111,6 +111,8 @@ proxy requests. The following options are supported:
 * boolean `wildcardOrigin` - If true (default), return `*` as the value for the `access-control-allow-origin` header on the outgoing response. If false, set the value to the incoming request's `Origin` header and add `Origin` to the `Vary` header.
 * string `helpFile` - Set the help file (shown at the homepage). If this is set to a falsey value then a 404 is returned instead.
   Example: `"myCustomHelpText.txt"`
+* dictionary of lowercase strings `setResponseHeaders` - Set headers on the outgoing proxied response (overwrites existing ones).  
+  Example: `{"x-powered-by": "CORS Anywhere"}`  
 
 For advanced users, the following options are also provided.
 
