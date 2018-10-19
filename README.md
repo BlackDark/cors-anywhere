@@ -7,7 +7,7 @@ The url to proxy is literally taken from the path, validated and proxied. The pr
 part of the proxied URI is optional, and defaults to "http". If port 443 is specified,
 the protocol defaults to "https".
 
-This package does not put any restrictions on the http methods or headers, except for
+This package does not put any restrictions on the http headers, except for
 cookies. Requesting [user credentials](http://www.w3.org/TR/cors/#user-credentials) is disallowed.
 The app can be configured to require a header for proxying a request, for example to avoid
 a direct visit from the browser.
@@ -15,9 +15,8 @@ a direct visit from the browser.
 ## Example
 
 ```javascript
-// Listen on a specific host via the HOST environment variable
-var host = process.env.HOST || '0.0.0.0';
-// Listen on a specific port via the PORT environment variable
+// Heroku defines the environment variable PORT, and requires the binding address to be 0.0.0.0
+var host = process.env.PORT ? '0.0.0.0' : '127.0.0.1';
 var port = process.env.PORT || 8080;
 
 var cors_proxy = require('cors-anywhere');
@@ -86,6 +85,8 @@ jQuery.ajaxPrefilter(function(options) {
 The module exports `createServer(options)`, which creates a server that handles
 proxy requests. The following options are supported:
 
+* list of HTTP method strings `allowedMethods` - If set, incoming requests that don't use one of the methods in this will receive a 405 response. An empty list will allow all methods.
+  Example: `['GET', 'POST', 'OPTIONS']`
 * function `getProxyForUrl` - If set, specifies which intermediate proxy to use for a given URL.
   If the return value is void, a direct request is sent. The default implementation is
   [`proxy-from-env`](https://github.com/Rob--W/proxy-from-env), which respects the standard proxy
@@ -107,9 +108,8 @@ proxy requests. The following options are supported:
   Example: `["cookie"]`
 * dictionary of lowercase strings `setHeaders` - Set headers for the request (overwrites existing ones).  
   Example: `{"x-powered-by": "CORS Anywhere"}`
-* number `corsMaxAge` - If set, an Access-Control-Max-Age request header with this value (in seconds) will be added.  
-  Example: `600` - Allow CORS preflight request to be cached by the browser for 10 minutes.
-* string `helpFile` - Set the help file (shown at the homepage).  
+* boolean `wildcardOrigin` - If true (default), return `*` as the value for the `access-control-allow-origin` header on the outgoing response. If false, set the value to the incoming request's `Origin` header and add `Origin` to the `Vary` header.
+* string `helpFile` - Set the help file (shown at the homepage). If this is set to a falsey value then a 404 is returned instead.
   Example: `"myCustomHelpText.txt"`
 
 For advanced users, the following options are also provided.
