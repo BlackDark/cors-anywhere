@@ -28,6 +28,7 @@
     "server.js"
   ],
   "dependencies": {
+    "dotenv": "^6.1.0",
     "http-proxy": "1.11.1",
     "proxy-from-env": "0.0.1",
     "syswide-cas": "^5.3.0"

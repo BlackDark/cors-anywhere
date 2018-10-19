@@ -1,3 +1,9 @@
+require('dotenv').config();
+
+var syswidecas = require('syswide-cas');
+syswidecas.addCAs(parseEnvArray(process.env.CORSANYWHERE_CUSTOMCAFOLDERS));
+syswidecas.addCAs(parseEnvArray(process.env.CORSANYWHERE_CUSTOMCAFILESS));
+
 // Listen on a specific host via the HOST environment variable
 var host = process.env.HOST || '0.0.0.0';
 // Listen on a specific port via the PORT environment variable
@@ -10,18 +16,11 @@ var port = process.env.PORT || 8080;
 var originBlacklist = parseEnvList(process.env.CORSANYWHERE_BLACKLIST);
 var originWhitelist = parseEnvList(process.env.CORSANYWHERE_WHITELIST);
 
-function parseEnvList(env) {
-  if (!env) {
-    return [];
-  }
-  return env.split(',');
-}
+var wildCardOrigin = process.env.CORSANYWHERE_WILDCARDORIGIN ? process.env.CORSANYWHERE_WILDCARDORIGIN.toLowerCase() === 'true' : true;
 
-var wildCardOrigin = process.env.CORSANYWHERE_WILDCARDORIGIN ?
-  process.env.CORSANYWHERE_WILDCARDORIGIN.toLowerCase() === 'true' : true;
-
-var syswidecas = require('syswide-cas');
-syswidecas.addCAs('/custom/ssl/ca');
+var requireHeader = process.env.CORSANYWHERE_REQUIREHEADER ? parseEnvArray(process.env.CORSANYWHERE_REQUIREHEADER) : [];
+var removeHeaders = process.env.CORSANYWHERE_REMOVEHEADER ? parseEnvArray(process.env.CORSANYWHERE_REMOVEHEADER) : [];
+var redirectSameOrigin = process.env.CORSANYWHERE_REDIRECTSAMEORIGIN ? process.env.CORSANYWHERE_REDIRECTSAMEORIGIN.toLowerCase() === 'true' : true;
 
 // Set up rate-limiting to avoid abuse of the public CORS Anywhere server.
 var checkRateLimit = require('./lib/rate-limit')(process.env.CORSANYWHERE_RATELIMIT);
@@ -31,18 +30,10 @@ var cors_proxy = require('./lib/cors-anywhere');
 var serverConfig = {
   originBlacklist: originBlacklist,
   originWhitelist: originWhitelist,
-  requireHeader: ['origin', 'x-requested-with'],
+  requireHeader: requireHeader,
   checkRateLimit: checkRateLimit,
-  removeHeaders: [
-    'cookie',
-    'cookie2',
-    // Strip Heroku-specific headers
-    'x-heroku-queue-wait-time',
-    'x-heroku-queue-depth',
-    'x-heroku-dynos-in-use',
-    'x-request-start',
-  ],
-  redirectSameOrigin: true,
+  removeHeaders: removeHeaders,
+  redirectSameOrigin: redirectSameOrigin,
   httpProxyOptions: {
     // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
     xfwd: false,
@@ -56,3 +47,18 @@ console.log('Server configuration: ', serverConfig);
 cors_proxy.createServer(serverConfig).listen(port, host, function () {
   console.log('Running CORS Anywhere on ' + host + ':' + port);
 });
+
+function parseEnvList(env) {
+  if (!env) {
+    return [];
+  }
+  return env.split(',');
+}
+
+// TODO maybe processing all envs as JSON?
+function parseEnvArray(env) {
+  if (!env) {
+    return [];
+  }
+  return JSON.parse(env);
+}
