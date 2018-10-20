@@ -1,6 +1,7 @@
 /* eslint-env mocha */
 // Run this specific test using:
 // npm test -- -f memory
+require('dotenv').config({path: '../.env.test'});
 var http = require('http');
 var path = require('path');
 var url = require('url');
