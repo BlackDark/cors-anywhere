@@ -171,6 +171,8 @@ Environment variables:
 
 - NODE_TLS_REJECT_UNAUTHORIZED
 - CORSANYWHERE_WILDCARDORIGIN
+- CORSANYWHERE_BLACKLIST=https://abuse.example.com,http://abuse.example.com
+- export CORSANYWHERE_RATELIMIT='50 3 my.example.com my2.example.com'
 
 
 ## License

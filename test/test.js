@@ -1,4 +1,7 @@
 /* eslint-env mocha */
+
+
+require('../envLoader').loadEnvRelativeFilepath('.env.test');
 require('./setup');
 
 var createServer = require('../').createServer;
@@ -166,7 +169,7 @@ describe('Basic functionality', function () {
       .expect('x-final-url', 'http://example.com/redirecttarget')
       .expect('access-control-expose-headers', /some-header,x-final-url/)
       .expectNoHeader('header at redirect')
-      .expect(200, '', done);
+      .expect(200, undefined, done);
   });
 
   it('GET with redirect should be followed', function (done) {
@@ -333,6 +336,28 @@ describe('Proxy errors', function () {
     });
   });
 
+  var bad_status_http_server;
+  var bad_status_http_server_url;
+  before(function () {
+    bad_status_http_server = require('net').createServer(function (socket) {
+      socket.setEncoding('utf-8');
+      socket.on('data', function (data) {
+        if (data.indexOf('\r\n') >= 0) {
+          // Assume end of headers.
+          socket.write('HTTP/1.0 0\r\n');
+          socket.write('Content-Length: 0\r\n');
+          socket.end('\r\n');
+        }
+      });
+    });
+    bad_status_http_server_url = 'http://127.0.0.1:' + bad_status_http_server.listen(0).address().port;
+  });
+  after(function (done) {
+    bad_status_http_server.close(function () {
+      done();
+    });
+  });
+
   var bad_tcp_server;
   var bad_tcp_server_url;
   before(function () {
@@ -368,6 +393,29 @@ describe('Proxy errors', function () {
       .get('/' + bad_http_server_url)
       .expect('Access-Control-Allow-Origin', '*')
       .expect(404, 'Not found because of proxy error: Error: Parse Error', done);
+  });
+
+  it('Invalid HTTP status code', function (done) {
+    // Strict HTTP status validation was introduced in Node 4.5.5+, 5.11.0+.
+    // https://github.com/nodejs/node/pull/6291
+    var nodev = process.versions.node.split('.').map(function (v) {
+      return parseInt(v);
+    });
+    if (nodev[0] < 4 ||
+      nodev[0] === 4 && nodev[1] < 5 ||
+      nodev[0] === 4 && nodev[1] === 5 && nodev[2] < 5 ||
+      nodev[0] === 5 && nodev[1] < 11) {
+      this.skip();
+    }
+
+    var errorMessage = 'RangeError [ERR_HTTP_INVALID_STATUS_CODE]: Invalid status code: 0';
+    if (parseInt(process.versions.node, 10) < 9) {
+      errorMessage = 'RangeError: Invalid status code: 0';
+    }
+    request(cors_anywhere)
+      .get('/' + bad_status_http_server_url)
+      .expect('Access-Control-Allow-Origin', '*')
+      .expect(404, 'Not found because of proxy error: ' + errorMessage, done);
   });
 
   it('Content-Encoding invalid body', function (done) {
@@ -440,58 +488,19 @@ describe('server on https', function () {
   });
 });
 
-describe('allowedMethods', function () {
-  before(function () {
-    cors_anywhere = createServer({
-      allowedMethods: ['GET', 'POST'],
-    });
-    cors_anywhere_port = cors_anywhere.listen(0).address().port;
-  });
-  after(stopServer);
-
-  it('GET /example.com with GET allowed', function (done) {
-    request(cors_anywhere)
-      .get('/example.com/')
-      .set('Origin', 'https://permitted.origin.test')
-      .expect('Access-Control-Allow-Origin', '*')
-      .expect('Access-Control-Allow-Methods', 'GET,POST')
-      .expect(200, done);
-  });
-
-  it('HEAD /example.com with HEAD not allowed', function (done) {
-    request(cors_anywhere)
-      .head('/example.com/')
-      .set('Origin', 'https://permitted.origin.test')
-      .expect('Access-Control-Allow-Origin', '*')
-      .expect('Access-Control-Allow-Methods', 'GET,POST')
-      .expect(405, done);
-  });
-
-  it('OPTIONS /example.com with HEAD not allowed', function (done) {
-    request(cors_anywhere)
-      .head('/example.com/')
-      .set('Origin', 'https://permitted.origin.test')
-      .expect('Access-Control-Allow-Origin', '*')
-      .expect('Access-Control-Allow-Methods', 'GET,POST')
-      .expect(405, done);
-  });
-});
-
-describe('originBlacklist', function () {
-  before(function () {
-describe('target with invalid https configuration', function() {
+describe('target with invalid https configuration', function () {
   afterEach(stopServer);
 
   var E_CERT_HAS_EXPIRED; // "Error: certificate has expired"
   var NODE_TLS_REJECT_UNAUTHORIZED = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
   var bad_https_server;
   var bad_https_server_url;
-  before(function(done) {
+  before(function (done) {
     bad_https_server = require('https').createServer({
       // The certificate of the test server has already expired.
       key: fs.readFileSync(path.join(__dirname, 'key.pem')),
       cert: fs.readFileSync(path.join(__dirname, 'cert.pem')),
-    }, function(req, res) {
+    }, function (req, res) {
       res.writeHead(200);
       res.end('Response with expired certificate.');
     });
@@ -500,27 +509,27 @@ describe('target with invalid https configuration', function() {
     require('tls').connect({
       port: bad_https_server.address().port,
       rejectUnauthorized: true,
-    }).on('error', function(err) {
+    }).on('error', function (err) {
       E_CERT_HAS_EXPIRED = String(err);
       done();
     });
   });
-  after(function(done) {
+  after(function (done) {
     if (NODE_TLS_REJECT_UNAUTHORIZED === undefined) {
       delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
     } else {
       process.env.NODE_TLS_REJECT_UNAUTHORIZED = NODE_TLS_REJECT_UNAUTHORIZED;
     }
-    bad_https_server.close(function() {
+    bad_https_server.close(function () {
       done();
     });
   });
 
-  beforeEach(function() {
+  beforeEach(function () {
     delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
   });
 
-  it('default configuration should reject invalid https certificate', function(done) {
+  it('default configuration should reject invalid https certificate', function (done) {
     cors_anywhere = createServer();
     cors_anywhere_port = cors_anywhere.listen(0).address().port;
 
@@ -530,7 +539,7 @@ describe('target with invalid https configuration', function() {
       .expect(404, 'Not found because of proxy error: ' + E_CERT_HAS_EXPIRED, done);
   });
 
-  it('NODE_TLS_REJECT_UNAUTHORIZED=0 should allow invalid https certificate', function(done) {
+  it('NODE_TLS_REJECT_UNAUTHORIZED=0 should allow invalid https certificate', function (done) {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     cors_anywhere = createServer();
     cors_anywhere_port = cors_anywhere.listen(0).address().port;
@@ -541,7 +550,7 @@ describe('target with invalid https configuration', function() {
       .expect(200, 'Response with expired certificate.', done);
   });
 
-  it('NODE_TLS_REJECT_UNAUTHORIZED=1 should reject invalid https certificate', function(done) {
+  it('NODE_TLS_REJECT_UNAUTHORIZED=1 should reject invalid https certificate', function (done) {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1';
     cors_anywhere = createServer();
     cors_anywhere_port = cors_anywhere.listen(0).address().port;
@@ -552,7 +561,7 @@ describe('target with invalid https configuration', function() {
       .expect(404, 'Not found because of proxy error: ' + E_CERT_HAS_EXPIRED, done);
   });
 
-  it('httpProxyOptions.secure=false should allow invalid https certificate', function(done) {
+  it('httpProxyOptions.secure=false should allow invalid https certificate', function (done) {
     // The httpProxyOptions.secure option should take precedence.
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1';
 
@@ -569,7 +578,7 @@ describe('target with invalid https configuration', function() {
       .expect(200, 'Response with expired certificate.', done);
   });
 
-  it('httpProxyOptions.secure=true should reject invalid https certificate', function(done) {
+  it('httpProxyOptions.secure=true should reject invalid https certificate', function (done) {
     // The httpProxyOptions.secure option should take precedence.
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
@@ -587,8 +596,42 @@ describe('target with invalid https configuration', function() {
   });
 });
 
-describe('originBlacklist', function() {
-  before(function() {
+describe('allowedMethods', function () {
+  before(function () {
+    cors_anywhere = createServer({
+      allowedMethods: ['GET', 'POST'],
+    });
+    cors_anywhere_port = cors_anywhere.listen(0).address().port;
+  });
+  after(stopServer);
+  it('GET /example.com with GET allowed', function (done) {
+    request(cors_anywhere)
+      .get('/example.com/')
+      .set('Origin', 'https://permitted.origin.test')
+      .expect('Access-Control-Allow-Origin', '*')
+      .expect('Access-Control-Allow-Methods', 'GET,POST')
+      .expect(200, done);
+  });
+  it('HEAD /example.com with HEAD not allowed', function (done) {
+    request(cors_anywhere)
+      .head('/example.com/')
+      .set('Origin', 'https://permitted.origin.test')
+      .expect('Access-Control-Allow-Origin', '*')
+      .expect('Access-Control-Allow-Methods', 'GET,POST')
+      .expect(405, done);
+  });
+  it('OPTIONS /example.com with HEAD not allowed', function (done) {
+    request(cors_anywhere)
+      .head('/example.com/')
+      .set('Origin', 'https://permitted.origin.test')
+      .expect('Access-Control-Allow-Origin', '*')
+      .expect('Access-Control-Allow-Methods', 'GET,POST')
+      .expect(405, done);
+  });
+});
+
+describe('originBlacklist', function () {
+  before(function () {
     cors_anywhere = createServer({
       originBlacklist: ['http://denied.origin.test'],
     });
@@ -959,6 +1002,58 @@ describe('setHeaders + removeHeaders', function () {
   });
 });
 
+describe('Access-Control-Max-Age set', function () {
+  before(function () {
+    cors_anywhere = createServer({
+      corsMaxAge: 600,
+    });
+    cors_anywhere_port = cors_anywhere.listen(0).address().port;
+  });
+  after(stopServer);
+
+  it('GET /', function (done) {
+    request(cors_anywhere)
+      .get('/')
+      .type('text/plain')
+      .expect('Access-Control-Allow-Origin', '*')
+      .expect('Access-Control-Max-Age', '600')
+      .expect(200, helpText, done);
+  });
+
+  it('GET /example.com', function (done) {
+    request(cors_anywhere)
+      .get('/example.com')
+      .expect('Access-Control-Allow-Origin', '*')
+      .expect('Access-Control-Max-Age', '600')
+      .expect(200, 'Response from example.com', done);
+  });
+});
+
+describe('Access-Control-Max-Age not set', function () {
+  before(function () {
+    cors_anywhere = createServer();
+    cors_anywhere_port = cors_anywhere.listen(0).address().port;
+  });
+  after(stopServer);
+
+  it('GET /', function (done) {
+    request(cors_anywhere)
+      .get('/')
+      .type('text/plain')
+      .expect('Access-Control-Allow-Origin', '*')
+      .expectNoHeader('Access-Control-Max-Age')
+      .expect(200, helpText, done);
+  });
+
+  it('GET /example.com', function (done) {
+    request(cors_anywhere)
+      .get('/example.com')
+      .expect('Access-Control-Allow-Origin', '*')
+      .expectNoHeader('Access-Control-Max-Age')
+      .expect(200, 'Response from example.com', done);
+  });
+});
+
 describe('httpProxyOptions.xfwd=false', function () {
   before(function () {
     cors_anywhere = createServer({
@@ -1111,7 +1206,6 @@ describe('helpFile', function () {
       helpFile: undefined,
     });
     cors_anywhere_port = cors_anywhere.listen(0).address().port;
-
     request(cors_anywhere)
       .get('/')
       .type('text/plain')
@@ -1124,7 +1218,6 @@ describe('helpFile', function () {
       helpFile: '',
     });
     cors_anywhere_port = cors_anywhere.listen(0).address().port;
-
     request(cors_anywhere)
       .get('/')
       .type('text/plain')
@@ -1132,7 +1225,6 @@ describe('helpFile', function () {
       .expect(404, 'Not found.', done);
   });
 });
-
 describe('wildcardOrigin', function () {
   before(function () {
     cors_anywhere = createServer({
