@@ -58,6 +58,9 @@ nock('http://example.com')
   .get('/')
   .reply(200, 'Response from example.com')
 
+  .head('/')
+  .reply(200, '')
+
   .post('/echopost')
   .reply(200, function (uri, requestBody) {
     return requestBody;
@@ -126,6 +129,18 @@ nock('http://example.com')
   .get('/withVaryHeader')
   .reply(200, 'Response from example.com', {
     'Vary': 'SomeHeader',
+  })
+
+  .get('/removeResponseHeaders')
+  .reply(200, '', {
+    'Remove-Me': 'x',
+    'Not-Remove-Me': 'y',
+  })
+
+  .head('/removeResponseHeaders')
+  .reply(200, '', {
+    'Remove-Me': 'x',
+    'Not-Remove-Me': 'y',
   })
 ;
 

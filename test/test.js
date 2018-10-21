@@ -1225,6 +1225,7 @@ describe('helpFile', function () {
       .expect(404, 'Not found.', done);
   });
 });
+
 describe('wildcardOrigin', function () {
   before(function () {
     cors_anywhere = createServer({
@@ -1249,6 +1250,62 @@ describe('wildcardOrigin', function () {
       .set('Origin', 'https://permitted.origin.test')
       .expect('Access-Control-Allow-Origin', 'https://permitted.origin.test')
       .expect('Vary', 'SomeHeader,Origin')
+      .expect(200, done);
+  });
+});
+
+describe('removeResponseHeaders', function () {
+  before(function () {
+    cors_anywhere = createServer({
+      removeResponseHeader: ['Remove-Me'],
+    });
+    cors_anywhere_port = cors_anywhere.listen(0).address().port;
+  });
+  after(stopServer);
+
+  it('GET with removed header', function (done) {
+    request(cors_anywhere)
+      .get('/http://example.com/removeResponseHeaders')
+      .expect('Access-Control-Allow-Origin', '*')
+      .expectNoHeader('Remove-Me')
+      .expect('Not-Remove-Me', 'y')
+      .expect(200, done);
+  });
+
+  it('HEAD with removed header', function (done) {
+    request(cors_anywhere)
+      .head('/http://example.com/removeResponseHeaders')
+      .expect('Access-Control-Allow-Origin', '*')
+      .expectNoHeader('Remove-Me')
+      .expect('Not-Remove-Me', 'y')
+      .expect(200, done);
+  });
+});
+
+describe('setResponseHeader', function () {
+  before(function () {
+    cors_anywhere = createServer({
+      setResponseHeaders: {
+        "foo": "bar"
+      },
+    });
+    cors_anywhere_port = cors_anywhere.listen(0).address().port;
+  });
+  after(stopServer);
+
+  it('GET /example.com with added response header', function (done) {
+    request(cors_anywhere)
+      .get('/example.com/')
+      .expect('Access-Control-Allow-Origin', '*')
+      .expect('foo', 'bar')
+      .expect(200, done);
+  });
+
+  it('HEAD /example.com with added response header', function (done) {
+    request(cors_anywhere)
+      .head('/example.com/')
+      .expect('Access-Control-Allow-Origin', '*')
+      .expect('foo', 'bar')
       .expect(200, done);
   });
 });
