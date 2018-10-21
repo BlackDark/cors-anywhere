@@ -1,4 +1,9 @@
-require('dotenv').config();
+const path = require('path');
+
+require('dotenv').config({
+  debug: parseEnvBool('DEBUG', false) || false,
+  path: path.resolve(process.cwd(), process.env.ENV_FILE || '.env'),
+});
 
 const syswidecas = require('syswide-cas');
 syswidecas.addCAs(parseEnvArray(process.env.CORSANYWHERE_CUSTOMCAFOLDERS));

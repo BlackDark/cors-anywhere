@@ -1,3 +1,12 @@
+const winston = require('winston');
+const logger = winston.createLogger({
+  level: process.env.CORSANYWHERE_LOGLEVEL,
+  transports: [
+    new winston.transports.Console(),
+  ]
+});
+
+
 class ServerConfigurator {
 
   static getConfiguration() {
@@ -28,8 +37,14 @@ class ServerConfigurator {
       setResponseHeaders['Access-Control-Allow-Credentials'] = true;
     }
 
-    // Set up rate-limiting to avoid abuse of the public CORS Anywhere server.
-    const checkRateLimit = require('./lib/rate-limit')(process.env.CORSANYWHERE_RATELIMIT);
+    const corsMaxAge = process.env.CORSANYWHERE_CORSMAXAGE ? +process.env.CORSANYWHERE_CORSMAXAGE : null;
+
+    let checkRateLimit = null;
+
+    if (process.env.CORSANYWHERE_RATELIMIT) {
+      // Set up rate-limiting to avoid abuse of the public CORS Anywhere server.
+      checkRateLimit = require('./lib/rate-limit')(process.env.CORSANYWHERE_RATELIMIT);
+    }
 
     return {
       allowedMethods: allowedMethods,
@@ -46,14 +61,18 @@ class ServerConfigurator {
       httpProxyOptions: {
         xfwd: httpsOptionXfwd, // Append X-Forwarded-* headers // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
         secure: !disableTLSVerification,
-        selfHandleResponse : true,
+        //selfHandleResponse : true,
       },
+      // TODO this has to be validated see cors-anywhere#L441
+      //httpsProxyOptions: {},
       setHeaders: setRequestHeaders,
       setResponseHeaders: setResponseHeaders,
       wildcardOrigin: wildCardOrigin,
+      corsMaxAge: corsMaxAge,
     };
   }
 }
+
 
 function parseEnvList(env) {
   if (!env) {

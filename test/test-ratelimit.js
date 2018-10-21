@@ -1,5 +1,5 @@
 /* eslint-env mocha */
-require('dotenv').config({path: '../.env.test'});
+require('../loadEnvs');
 var createRateLimitChecker = require('../lib/rate-limit');
 
 var lolex = require('lolex');
@@ -215,17 +215,21 @@ describe('Rate limit', function() {
     assertNotLimited(checkRateLimit('http://null'));
   });
 
-  it('bad input', function() {
+  it('bad input - Regex = /', function() {
     assert.throws(function() {
       createRateLimitChecker('0 1 /');
-    }, 'Invalid CORSANYWHERE_RATELIMIT. Regex at index 0 must start and end with a slash ("/").');
+    });
+  });
 
+  it('bad input - Regex incomplete = a,/', function() {
     assert.throws(function() {
-      createRateLimitChecker('0 1 a,/');
-    }, 'Invalid CORSANYWHERE_RATELIMIT. Regex at index 1 must start and end with a slash ("/").');
+      createRateLimitChecker('0 1 a,/')
+    });
+  });
 
+  it('bad input - Invalid regex = /(/', function() {
     assert.throws(function() {
       createRateLimitChecker('0 1 /(/');
-    }, /Invalid regular expression/);
+    });
   });
 });

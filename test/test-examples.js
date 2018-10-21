@@ -9,7 +9,7 @@
  */
 
 /* eslint-env mocha */
-require('dotenv').config({path: '../.env.test'});
+require('../loadEnvs');
 require('./setup');
 
 var createServer = require('../').createServer;
