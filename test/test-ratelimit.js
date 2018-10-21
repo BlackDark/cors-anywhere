@@ -1,5 +1,5 @@
 /* eslint-env mocha */
-require('../loadEnvs');
+require('../envLoader').loadEnvRelativeFilepath('.env.test');
 var createRateLimitChecker = require('../lib/rate-limit');
 
 var lolex = require('lolex');

@@ -9,7 +9,7 @@
  */
 
 /* eslint-env mocha */
-require('../loadEnvs');
+require('../envLoader').loadEnvRelativeFilepath('.env.test');
 require('./setup');
 
 var createServer = require('../').createServer;
