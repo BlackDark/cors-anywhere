@@ -7,7 +7,7 @@ The url to proxy is literally taken from the path, validated and proxied. The pr
 part of the proxied URI is optional, and defaults to "http". If port 443 is specified,
 the protocol defaults to "https".
 
-This package does not put any restrictions on the http methods or headers, except for
+This package does not put any restrictions on the http headers, except for
 cookies. Requesting [user credentials](http://www.w3.org/TR/cors/#user-credentials) is disallowed.
 The app can be configured to require a header for proxying a request, for example to avoid
 a direct visit from the browser.
@@ -15,9 +15,8 @@ a direct visit from the browser.
 ## Example
 
 ```javascript
-// Listen on a specific host via the HOST environment variable
-var host = process.env.HOST || '0.0.0.0';
-// Listen on a specific port via the PORT environment variable
+// Heroku defines the environment variable PORT, and requires the binding address to be 0.0.0.0
+var host = process.env.PORT ? '0.0.0.0' : '127.0.0.1';
 var port = process.env.PORT || 8080;
 
 var cors_proxy = require('cors-anywhere');
@@ -86,6 +85,8 @@ jQuery.ajaxPrefilter(function(options) {
 The module exports `createServer(options)`, which creates a server that handles
 proxy requests. The following options are supported:
 
+* list of HTTP method strings `allowedMethods` - If set, incoming requests that don't use one of the methods in this will receive a 405 response. An empty list will allow all methods.
+  Example: `['GET', 'POST', 'OPTIONS']`
 * function `getProxyForUrl` - If set, specifies which intermediate proxy to use for a given URL.
   If the return value is void, a direct request is sent. The default implementation is
   [`proxy-from-env`](https://github.com/Rob--W/proxy-from-env), which respects the standard proxy
@@ -107,10 +108,11 @@ proxy requests. The following options are supported:
   Example: `["cookie"]`
 * dictionary of lowercase strings `setHeaders` - Set headers for the request (overwrites existing ones).  
   Example: `{"x-powered-by": "CORS Anywhere"}`
-* number `corsMaxAge` - If set, an Access-Control-Max-Age request header with this value (in seconds) will be added.  
-  Example: `600` - Allow CORS preflight request to be cached by the browser for 10 minutes.
-* string `helpFile` - Set the help file (shown at the homepage).  
+* boolean `wildcardOrigin` - If true (default), return `*` as the value for the `access-control-allow-origin` header on the outgoing response. If false, set the value to the incoming request's `Origin` header and add `Origin` to the `Vary` header.
+* string `helpFile` - Set the help file (shown at the homepage). If this is set to a falsey value then a 404 is returned instead.
   Example: `"myCustomHelpText.txt"`
+* dictionary of lowercase strings `setResponseHeaders` - Set headers on the outgoing proxied response (overwrites existing ones).  
+  Example: `{"x-powered-by": "CORS Anywhere"}`  
 
 For advanced users, the following options are also provided.
 
@@ -156,6 +158,44 @@ export CORSANYWHERE_BLACKLIST=https://abuse.example.com,http://abuse.example.com
 export CORSANYWHERE_RATELIMIT='50 3 my.example.com my2.example.com'
 node server.js
 ```
+
+#### Dockerfile
+You also can use the Dockerfile to build your own docker image and start CORS Anywhere server in a container:
+
+```
+docker build -t cors-anywhere .
+docker run -d -p 8080:8080 --name cors-anywhere -e CORSANYWHERE_WHITELIST=https://example.com,http://example.com,http://example.com:8080 cors-anywhere
+```
+
+## Configuration
+
+The following table lists the configurable parameters and their default values:
+
+| Parameter                            | Description                                                                                                                                                                                                                                                          | Format  | Default                                                                                                                 | Example                                           |
+| -------------------------------      | ---------------------------------                                                                                                                                                                                                                                    | ------  | ------------------------------------------------------------------                                                      | ------------------------------------------------- |
+| `DEBUG`                              | Activate debug mode                                                                                                                                                                                                                                                  | Boolean | false                                                                                                                   | `true`                                            |
+| `HOST`                               | Customize the host where the server starts                                                                                                                                                                                                                           | String  | '0.0.0.0'                                                                                                               | `"127.0.0.1"`                                     |
+| `PORT`                               | Customize Port where the server start                                                                                                                                                                                                                                | Number  | 8080                                                                                                                    | `9090`                                            |
+| `NODE_TLS_REJECT_UNAUTHORIZED`       | For disabling the TLS verification                                                                                                                                                                                                                                   | Number  | 1                                                                                                                       | `0`                                               |
+| `CORSANYWHERE_ALLOWCREDENTIALS`      | For adding the `Access-Control-Allow-Credentials` header                                                                                                                                                                                                             | Boolean | false                                                                                                                   | `true`                                            |
+| `CORSANYWHERE_ALLOWEDMETHODS`        | For specifying allowed HTTP methods                                                                                                                                                                                                                                  | Array   | `[]`                                                                                                                    | `["GET", "POST"]`                                 |
+| `CORSANYWHERE_BLACKLIST`             | If set, requests whose origin is listed are blocked.                                                                                                                                                                                                                 | Array   | `[]`                                                                                                                    | `["http://example.com", "other.com"]`             |
+| `CORSANYWHERE_WHITELIST`             | If set, requests whose origin is not listed are blocked. If this list is empty, all origins are allowed.                                                                                                                                                             | Array   | `[]`                                                                                                                    | `["http://example.com", "other.com"]`             |
+| `CORSANYWHERE_CORSMAXAGE`            | If set, an Access-Control-Max-Age request header with this value (in seconds) will be added.                                                                                                                                                                         | Number  | `0`                                                                                                                     | `600`                                             |
+| `CORSANYWHERE_CUSTOMCAFILES`         | For loading customs CA files into the server                                                                                                                                                                                                                         | Array   | `[]`                                                                                                                    | `["/my/path/to.pem", "/other.pem"]`               |
+| `CORSANYWHERE_CUSTOMCAFOLDERS`       | For loading folders with CA files into server                                                                                                                                                                                                                        | Array   | `[]`                                                                                                                    | `["/my/path/"]`                                   |
+| `CORSANYWHERE_HANDLE_REDIRECTS`      | Specify if redirects should be handled by cors-proxy.                                                                                                                                                                                                                | Boolean | `true`                                                                                                                  | `false`                                           |
+| `CORSANYWHERE_HTTPSOPTIONS_XFWD`     | If X-Forwarded-* headers should be appended or not.                                                                                                                                                                                                                  | Boolean | `false`                                                                                                                 | `true`                                            |
+| `CORSANYWHERE_LOGLEVEL`              | Define the logging level of the server.                                                                                                                                                                                                                              | String  | `info`                                                                                                                  | `debug`                                           |
+| `CORSANYWHERE_MAXREDIRECTS`          | Define the maximum redirects the server follows.                                                                                                                                                                                                                     | Number  | `5`                                                                                                                     | `1`                                               |
+| `CORSANYWHERE_RATELIMIT`             | If set, it is called with the origin (string) of the request. If this function returns a non-empty string, the request is rejected and the string is send to the client.                                                                                             | String  | undefined                                                                                                               | `"0 1"` , `'50 3 my.example.com my2.example.com'` |
+| `CORSANYWHERE_REDIRECTSAMEORIGIN`    | If true, requests to URLs from the same origin will not be proxied but redirected. The primary purpose for this option is to save server resources by delegating the request to the client (since same-origin requests should always succeed, even without proxying) | Boolean | `false`                                                                                                                 | `true`                                            |
+| `CORSANYWHERE_REMOVEREQUESTHEADERS`  | Array of request headers which should be removed before proxying.                                                                                                                                                                                                    | Array   | `["cookie", "cookie2", "x-heroku-queue-wait-time", "x-heroku-queue-depth", "x-heroku-dynos-in-use", "x-request-start"]` | `[]`                                              |
+| `CORSANYWHERE_REMOVERESPONSEHEADERS` | Array of response headers which should be removed before return to client.                                                                                                                                                                                           | Array   | `["set-cookie", "set-cookie2"]`                                                                                         | `[]`                                              |
+| `CORSANYWHERE_REQUIREHEADER`         | Array of request headers (client) which are required in order to proxy the request.                                                                                                                                                                                  | Array   | `["origin", "x-requested-with"]`                                                                                        | `[]`                                              |
+| `CORSANYWHERE_SETREQUESTHEADER`      | JSON object of request headers which should be added before proxying.                                                                                                                                                                                                | Object  | `{}`                                                                                                                    | `'{"foo": "bar"}'`                                |
+| `CORSANYWHERE_SETRESPONSEHEADER`     | JSON object of response headers which should be added before proxying.                                                                                                                                                                                               | Object  | `{}`                                                                                                                    | `'{"foo": "bar"}'`                                |
+| `CORSANYWHERE_WILDCARDORIGIN`        | If true (default), return * as the value for the access-control-allow-origin header on the outgoing response. If false, set the value to the incoming request's Origin header and add Origin to the Vary header.                                                     | Boolean | `true`                                                                                                                  | `false`                                           |
 
 
 ## License

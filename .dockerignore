@@ -2,8 +2,10 @@
 *.tmp
 *.log
 *.lock
-package-lock.json
+.gitignore
+.dockerignore
 
 .idea/
 coverage/
 node_modules/
+test/

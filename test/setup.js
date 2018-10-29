@@ -1,4 +1,5 @@
 var nock = require('nock');
+
 if (parseInt(process.versions.node, 10) >= 8) {
   // See DEP0066 at https://nodejs.org/api/deprecations.html.
   // _headers and _headerNames have been removed from Node v8, which causes
@@ -28,7 +29,7 @@ function echoheaders(origin) {
   nock(origin)
     .persist()
     .get('/echoheaders')
-    .reply(function() {
+    .reply(function () {
       var headers = this.req.headers;
       var excluded_headers = [
         'accept-encoding',
@@ -43,7 +44,7 @@ function echoheaders(origin) {
         excluded_headers.push('x-forwarded-proto');
       }
       var response = {};
-      Object.keys(headers).forEach(function(name) {
+      Object.keys(headers).forEach(function (name) {
         if (excluded_headers.indexOf(name) === -1) {
           response[name] = headers[name];
         }
@@ -57,8 +58,11 @@ nock('http://example.com')
   .get('/')
   .reply(200, 'Response from example.com')
 
+  .head('/')
+  .reply(200, '')
+
   .post('/echopost')
-  .reply(200, function(uri, requestBody) {
+  .reply(200, function (uri, requestBody) {
     return requestBody;
   })
 
@@ -67,6 +71,11 @@ nock('http://example.com')
     'Set-Cookie': 'x',
     'Set-Cookie2': 'y',
     'Set-Cookie3': 'z', // This is not a special cookie setting header.
+  })
+
+  .head('/redirecttarget')
+  .reply(200, '', {
+    'Some-header': 'value',
   })
 
   .get('/redirecttarget')
@@ -116,6 +125,23 @@ nock('http://example.com')
 
   .get('/proxyerror')
   .replyWithError('throw node')
+
+  .get('/withVaryHeader')
+  .reply(200, 'Response from example.com', {
+    'Vary': 'SomeHeader',
+  })
+
+  .get('/removeResponseHeaders')
+  .reply(200, '', {
+    'Remove-Me': 'x',
+    'Not-Remove-Me': 'y',
+  })
+
+  .head('/removeResponseHeaders')
+  .reply(200, '', {
+    'Remove-Me': 'x',
+    'Not-Remove-Me': 'y',
+  })
 ;
 
 nock('https://example.com')
